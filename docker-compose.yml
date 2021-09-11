@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  app:
+    container_name: app
+    build: .
+    env_file:
+      - .env
+    command: bash -c "
+      uvicorn source.app.main:app
+      --host 0.0.0.0 --port 8080
+      --lifespan=on --use-colors
+      --reload --log-level debug
+      "
+    volumes:
+      - .:/source/
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+  redis:
+    container_name: redis
+    image: redis:latest
+    restart: always
+    env_file:
+      - .env
+    command: redis-server --port "${REDIS_PORT}" --requirepass ${REDIS_PASSWORD} --appendonly yes
+    ports:
+      - "6379:6379"
