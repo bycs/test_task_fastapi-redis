@@ -43,7 +43,7 @@
     посещенных за переданный интервал времени.
     Формат даты - YYMMDDHHDD.
 * Пример запроса
->GET /visited_domains?datetime_from=2109010000&datetime_from_to=2110010000
+>GET /visited_domains?datetime_from=2109010000&datetime_to=2110010000
 * Пример ответа
 >{
 "domains": [
