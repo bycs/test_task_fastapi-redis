@@ -13,7 +13,7 @@ tldextract = "^3.1.2"
 
 
 [tool.poetry.dev-dependencies]
-black = "^21.8b0"
+black = "^21.9b0"
 flake8 = "^3.9.2"
 flake8-black = "^0.2.3"
 flake8-builtins = "^1.5.3"
