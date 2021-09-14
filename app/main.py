@@ -12,6 +12,7 @@ from .schemas import ResponseStatusSchema, VisitedDomainsSchema
 
 
 def url_parsing(url: str) -> str:
+    """Преобразование ссылки в формат domain.suffix."""
     extract_result = tldextract.extract(url)
     domain = f"{extract_result.domain}.{extract_result.suffix}"
     return domain
@@ -35,6 +36,9 @@ redis_client = aioredis.from_url(
     status_code=status.HTTP_200_OK,
 )
 async def visited_links_post(links: dict) -> dict:
+    """Передача в сервис массива ссылок в POST-запросе.
+    Временем их посещения считается время получения запроса сервисом.
+    Формат даты - YYMMDDHHDD."""
     datetime_now = datetime.datetime.utcnow().strftime("%y%m%d%H%M")
     links = links["links"]
     for link in links:
@@ -50,6 +54,9 @@ async def visited_links_post(links: dict) -> dict:
     status_code=status.HTTP_200_OK,
 )
 async def visited_domains_get(datetime_from: int, datetime_from_to: int) -> dict:
+    """Получение GET-запросом списка уникальных доменов,
+    посещенных за переданный интервал времени.
+    Формат даты - YYMMDDHHDD."""
     domains = await redis_client.zrangebyscore(
         name="links", min=datetime_from, max=datetime_from_to
     )
