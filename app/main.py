@@ -1,14 +1,20 @@
 import datetime
 import http
-import json
 import os
-import urllib.parse
 
 from fastapi import FastAPI, status
 
 import redis
 
-from .schemas import VisitedDomainsSchema
+import tldextract
+
+from .schemas import ResponseStatusSchema, VisitedDomainsSchema
+
+
+def url_parsing(url: str) -> str:
+    extract_result = tldextract.extract(url)
+    domain = f"{extract_result.domain}.{extract_result.suffix}"
+    return domain
 
 
 app = FastAPI()
@@ -20,10 +26,14 @@ redis_client = redis.Redis(
 )
 
 
-@app.post("/visited_links", status_code=status.HTTP_200_OK)
-def visited_links_post(links_json: str):
+@app.post(
+    "/visited_links",
+    response_model=ResponseStatusSchema,
+    status_code=status.HTTP_200_OK,
+)
+def visited_links_post(links: dict) -> dict:
     datetime_now = datetime.datetime.utcnow().strftime("%y%m%d%H%M")
-    links = json.loads(links_json)["links"]
+    links = links["links"]
     for link in links:
         redis_client.zadd(name="links", mapping={link: datetime_now})
         redis_client.close()
@@ -36,11 +46,11 @@ def visited_links_post(links_json: str):
     response_model=VisitedDomainsSchema,
     status_code=status.HTTP_200_OK,
 )
-def visited_domains_get(datetime_from: int, datetime_from_to: int):
+def visited_domains_get(datetime_from: int, datetime_from_to: int) -> dict:
     domains = redis_client.zrangebyscore(
         name="links", min=datetime_from, max=datetime_from_to
     )
     domains = (x.decode("UTF-8") for x in domains)
-    domains = (urllib.parse.urlsplit(x).netloc for x in domains)
+    domains = (url_parsing(x) for x in domains)
     status_detail = http.HTTPStatus.OK.phrase
-    return {"domains": list(domains), "status": status_detail}
+    return {"domains": list(set(domains)), "status": status_detail}

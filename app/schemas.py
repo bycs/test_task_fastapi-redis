@@ -1,8 +1,10 @@
-from typing import List
-
 from pydantic import BaseModel
 
 
+class ResponseStatusSchema(BaseModel):
+    status: str
+
+
 class VisitedDomainsSchema(BaseModel):
-    domains: List
+    domains: list[str]
     status: str
