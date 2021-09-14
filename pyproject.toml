@@ -6,10 +6,11 @@ authors = ["Stas Cartoon <bycs@mail.ru>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+aioredis = "^2.0.0"
 fastapi = "^0.68.1"
 uvicorn = "^0.15.0"
-redis = "^3.5.3"
 tldextract = "^3.1.2"
+
 
 [tool.poetry.dev-dependencies]
 black = "^21.8b0"
