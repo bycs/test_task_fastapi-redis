@@ -28,7 +28,7 @@ def visited_links_post(links_json: str):
         redis_client.zadd(name="links", mapping={link: datetime_now})
         redis_client.close()
     status_detail = http.HTTPStatus.OK.phrase
-    return {"status": status_detail, "links": links}
+    return {"status": status_detail}
 
 
 @app.get(
