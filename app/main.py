@@ -43,16 +43,22 @@ async def validation_exception_handler(request, exc):
     response_model=ResponseStatusSchema,
     status_code=status.HTTP_200_OK,
 )
-async def visited_links_post(json_links: RequestsVisitedLinksSchema) -> dict[str, Any]:
+async def visited_links_post(json_links: RequestsVisitedLinksSchema) -> Union[dict[str, Any], PlainTextResponse]:
     """Передача в сервис массива ссылок в POST-запросе.
     Временем их посещения считается время получения запроса сервисом.
     Формат даты - YYMMDDHHDD."""
     datetime_now = datetime.utcnow().strftime("%y%m%d%H%M")
     for link in json_links.links:
-        await redis_client.zadd(name="links", mapping={link: datetime_now})
-        await redis_client.close()
-    status_detail = http.HTTPStatus.OK.phrase
-    return {"status": status_detail}
+        try:
+            await redis_client.zadd(name="links", mapping={link: datetime_now})
+            await redis_client.close()
+        except ConnectionError:
+            return PlainTextResponse(
+                json.dumps({"status": http.HTTPStatus.INTERNAL_SERVER_ERROR.phrase}), status_code=500
+            )
+        else:
+            status_detail = http.HTTPStatus.OK.phrase
+            return {"status": status_detail}
 
 
 @app.get(
@@ -74,11 +80,17 @@ async def visited_domains_get(
             json.dumps({"status": http.HTTPStatus.BAD_REQUEST.phrase}), status_code=400
         )
     else:
-        links = await redis_client.zrangebyscore(
-            name="links", min=datetime_from, max=datetime_to
-        )
-        await redis_client.close()
-        links = (UrlSchema(url=x) for x in links)
-        domains = (x.url.host for x in links)
-        status_detail = http.HTTPStatus.OK.phrase
-        return {"domains": list(set(domains)), "status": status_detail}
+        try:
+            links = await redis_client.zrangebyscore(
+                name="links", min=datetime_from, max=datetime_to
+            )
+            await redis_client.close()
+        except ConnectionError:
+            return PlainTextResponse(
+                json.dumps({"status": http.HTTPStatus.INTERNAL_SERVER_ERROR.phrase}), status_code=500
+            )
+        else:
+            links = (UrlSchema(url=x) for x in links)
+            domains = (x.url.host for x in links)
+            status_detail = http.HTTPStatus.OK.phrase
+            return {"domains": list(set(domains)), "status": status_detail}
