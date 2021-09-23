@@ -1,21 +1,22 @@
-import datetime
 import http
+import json
 import os
+from datetime import datetime
+from typing import Any, Union
 
 import aioredis
 
 from fastapi import FastAPI, status
-
-import tldextract
-
-from .schemas import ResponseStatusSchema, VisitedDomainsSchema
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import PlainTextResponse
 
 
-def url_parsing(url: str) -> str:
-    """Преобразование ссылки в формат domain.suffix."""
-    extract_result = tldextract.extract(url)
-    domain = f"{extract_result.domain}.{extract_result.suffix}"
-    return domain
+from .schemas import (
+    RequestsVisitedLinksSchema,
+    ResponseStatusSchema,
+    UrlSchema,
+    VisitedDomainsSchema,
+)
 
 
 app = FastAPI()
@@ -30,18 +31,24 @@ redis_client = aioredis.from_url(
 )
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return PlainTextResponse(
+        json.dumps({"status": http.HTTPStatus.BAD_REQUEST.phrase}), status_code=400
+    )
+
+
 @app.post(
     "/visited_links",
     response_model=ResponseStatusSchema,
     status_code=status.HTTP_200_OK,
 )
-async def visited_links_post(links: dict) -> dict:
+async def visited_links_post(json_links: RequestsVisitedLinksSchema) -> dict[str, Any]:
     """Передача в сервис массива ссылок в POST-запросе.
     Временем их посещения считается время получения запроса сервисом.
     Формат даты - YYMMDDHHDD."""
-    datetime_now = datetime.datetime.utcnow().strftime("%y%m%d%H%M")
-    links = links["links"]
-    for link in links:
+    datetime_now = datetime.utcnow().strftime("%y%m%d%H%M")
+    for link in json_links.links:
         await redis_client.zadd(name="links", mapping={link: datetime_now})
         await redis_client.close()
     status_detail = http.HTTPStatus.OK.phrase
@@ -53,14 +60,25 @@ async def visited_links_post(links: dict) -> dict:
     response_model=VisitedDomainsSchema,
     status_code=status.HTTP_200_OK,
 )
-async def visited_domains_get(datetime_from: int, datetime_from_to: int) -> dict:
+async def visited_domains_get(
+    datetime_from: str, datetime_to: str
+) -> Union[dict[str, Union[str, list]], PlainTextResponse]:
     """Получение GET-запросом списка уникальных доменов,
     посещенных за переданный интервал времени.
     Формат даты - YYMMDDHHDD."""
-    domains = await redis_client.zrangebyscore(
-        name="links", min=datetime_from, max=datetime_from_to
-    )
-    await redis_client.close()
-    domains = (url_parsing(x) for x in domains)
-    status_detail = http.HTTPStatus.OK.phrase
-    return {"domains": list(set(domains)), "status": status_detail}
+    try:
+        datetime.strptime(datetime_from, "%y%m%d%H%M")
+        datetime.strptime(datetime_to, "%y%m%d%H%M")
+    except ValueError:
+        return PlainTextResponse(
+            json.dumps({"status": http.HTTPStatus.BAD_REQUEST.phrase}), status_code=400
+        )
+    else:
+        links = await redis_client.zrangebyscore(
+            name="links", min=datetime_from, max=datetime_to
+        )
+        await redis_client.close()
+        links = (UrlSchema(url=x) for x in links)
+        domains = (x.url.host for x in links)
+        status_detail = http.HTTPStatus.OK.phrase
+        return {"domains": list(set(domains)), "status": status_detail}

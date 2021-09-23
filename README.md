@@ -28,7 +28,7 @@
 "links": [
 "https://ya.ru",
 "https://ya.ru?q=123",
-"funbox.ru",
+"http://funbox.ru",
 "https://stackoverflow.com/questions/11828270/how-to-exit-the-vim-editor"
 ]
 }
