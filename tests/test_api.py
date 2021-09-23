@@ -27,7 +27,7 @@ def test_visited_links_post():
     fakedata = [
         {},
         {"xxx": 1},
-        '',
+        "",
         777,
         [45, "string"],
         "string",

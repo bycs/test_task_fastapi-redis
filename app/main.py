@@ -43,7 +43,9 @@ async def validation_exception_handler(request, exc):
     response_model=ResponseStatusSchema,
     status_code=status.HTTP_200_OK,
 )
-async def visited_links_post(json_links: RequestsVisitedLinksSchema) -> Union[dict[str, Any], PlainTextResponse]:
+async def visited_links_post(
+    json_links: RequestsVisitedLinksSchema,
+) -> Union[dict[str, Any], PlainTextResponse]:
     """Передача в сервис массива ссылок в POST-запросе.
     Временем их посещения считается время получения запроса сервисом.
     Формат даты - YYMMDDHHDD."""
@@ -54,7 +56,8 @@ async def visited_links_post(json_links: RequestsVisitedLinksSchema) -> Union[di
             await redis_client.close()
         except ConnectionError:
             return PlainTextResponse(
-                json.dumps({"status": http.HTTPStatus.INTERNAL_SERVER_ERROR.phrase}), status_code=500
+                json.dumps({"status": http.HTTPStatus.INTERNAL_SERVER_ERROR.phrase}),
+                status_code=500,
             )
         else:
             status_detail = http.HTTPStatus.OK.phrase
@@ -87,7 +90,8 @@ async def visited_domains_get(
             await redis_client.close()
         except ConnectionError:
             return PlainTextResponse(
-                json.dumps({"status": http.HTTPStatus.INTERNAL_SERVER_ERROR.phrase}), status_code=500
+                json.dumps({"status": http.HTTPStatus.INTERNAL_SERVER_ERROR.phrase}),
+                status_code=500,
             )
         else:
             links = (UrlSchema(url=x) for x in links)
