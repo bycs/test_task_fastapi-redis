@@ -1,42 +1,16 @@
-from fastapi import FastAPI
+import json
+
+from app.main import app
+
 from fastapi.testclient import TestClient
-
-app = FastAPI()
-
-
-@app.get("/")
-async def read_main():
-    return {"msg": "Hello World"}
 
 
 client = TestClient(app)
 
 
-def test_read_main():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"msg": "Hello World"}
-
-
 def test_visited_links_get():
     response = client.get("/visited_links")
-    assert response.status_code == 404
-
-
-def test_visited_links_post():
-    fake_data = [
-        {
-            "links": [
-                "https://ya.ru",
-                "https://ya.ru?q=123",
-                "funbox.ru",
-                "https://stackoverflow.com/questions/11828270/how-to-exit-the-vim-editor",
-            ]
-        },
-    ]
-    for test in fake_data:
-        response = client.post("/visited_links", json=test)
-        assert response.status_code == 200
+    assert response.status_code == 405
 
 
 def test_visited_links_post_bad():
@@ -53,23 +27,13 @@ def test_visited_links_post_bad():
         {"links": ["http://yandex.ru", "https:google.com/76"]},
     ]
     for test in fake_data:
-        response = client.post("/visited_links", json=test)
-        assert response.status_code == 404 or 200
+        response = client.post("/visited_links", json=json.dumps(test))
+        assert response.status_code == 400
 
 
 def test_visited_domains_post():
     response = client.post("/visited_domains")
-    assert response.status_code == 404
-
-
-def test_visited_domains_get():
-    fake_data = [
-        {"datetime_from": "777", "datetime_to": "210101000"},
-        {"datetime_from": "210101000", "datetime_to": "210201000"},
-    ]
-    for test in fake_data:
-        response = client.get("/visited_domains", params=test)
-        assert response.status_code == 404 or 200
+    assert response.status_code == 405
 
 
 def test_visited_domains_get_bad():
@@ -84,5 +48,5 @@ def test_visited_domains_get_bad():
         {"datetime_from": 210101000, "datetime_to": "210201000"},
     ]
     for test in fake_data:
-        response = client.get("/visited_domains", params=test)
-        assert response.status_code == 404
+        response = client.get("/visited_domains", params=json.dumps(test))
+        assert response.status_code == 400
